@@ -2,7 +2,7 @@
 # Tasks for 7/2/2021
 
 ## Housekeeping
-- [ ] Add project to the repository
+- [x] Add project to the repository
 - [ ] Add Brian and Kip as collaborators
   - Need Brian's github username
 - [ ] Where put design doc?
