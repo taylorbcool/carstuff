@@ -18,6 +18,8 @@ level = {
   y = 0
 }
 
+inDialog = false
+
 function drawLevel()
   map(level.x, level.y, 0, 0, 128, 32)
 end
@@ -49,6 +51,72 @@ function actor:new(o)
   self.__index = self
   return o
 end
+
+dialog = {
+  name = '',
+  dsprite = dsprite,
+
+}
+
+dsprite = {
+  sx = 0,
+  sy = 0,
+  sh = 8,
+  sw = 8,
+  dx = 0,
+  dy = 0,
+  alpha = 0
+}
+
+function dsprite:new(o)
+  o = o or {}
+  setmetatable(o, self)
+  self.__index = self
+  return o
+end
+
+function dsprite:draw()
+  palt(self.alpha, true)
+  if(self.alpha != 0) palt(0, false)
+  sspr(self.sx, self.sy, self.sw, self.sh, self.dx, self.dy)
+  if(self.alpha != 0) then
+    palt(self.alpha, false)
+    palt(0, true)
+  end
+end
+
+function drawConvoBox(name, text)
+  palt(0, false)
+  rectfill(0, 108, 127,127, 0)
+  palt(0, true)
+  rect(1, 110, 126, 126, 6)
+  line(19,110, 51, 110, 0)
+  print(name..':', 20, 108, 6)
+  print(text, 20, 119, 6)
+  zeusSprite:draw()
+  chrisSprite:draw()
+end
+
+zeusSprite = dsprite:new({
+  sx = 24,
+  sy = 32,
+  sh = 16,
+  sw = 16,
+  alpha = 0,
+  dx = 109,
+  dy = 109
+})
+
+chrisSprite = dsprite:new({
+  sx = 40,
+  sy = 32,
+  sh = 16,
+  sw = 16,
+  alpha = 3,
+  dx = 4,
+  dy = 109
+})
+
 
 function worldCoordsToCoords(coords)
   return {
@@ -116,9 +184,10 @@ end
 
 function _draw()
 		cls()
-    drawCam()
+    --drawCam()
     drawLevel()
 	  for k,v in pairs(actors) do
     v:draw()
+    drawConvoBox('zeus','be cooler if you did...')
   end
 end
