@@ -87,7 +87,8 @@ function drawmap()
 end
 
 function drawFuel()
-  print(actors[1].fuel, 5, 5, 7)
+  print(actors[1].fuel, 25, 5, 7)
+  print("fuel:", 5, 5, 7)
 end
 
 function _init()
