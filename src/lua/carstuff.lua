@@ -40,7 +40,7 @@ actor = {
   sprite = 0,
   velocity = 0,
   maxVelocity = 2,
-  direction = 90
+  fuel = 10
 }
 
 function actor:new(o)
@@ -68,7 +68,7 @@ end
 
 
 function actor:draw()
-		-- print(self.coords.x..','..self.coords.y, self.coords.x, self.coords.y + 10)
+  -- print(self.coords.x..','..self.coords.y, self.coords.x, self.coords.y + 10)
   spr(self.sprite, self.coords.x, self.coords.y)
 end
 
@@ -81,6 +81,10 @@ end
 
 function drawmap()
   map(0, 0, 0, 0, 32, 64)
+end
+
+function drawFuel()
+  print(actors[1].fuel, 5, 5, 7)
 end
 
 function _init()
@@ -104,9 +108,12 @@ function _update()
     dir = addcoords(dir, { x = 1, y = 0})
   end
   if(btn(4)) then
-    dir = addcoords(dir, { x = 0, y = 1})
-    player.velocity = player.velocity + 0.1
-    if(player.velocity > player.maxVelocity) player.velocity = player.maxVelocity;
+    if(player.fuel > 0) then
+      dir = addcoords(dir, { x = 0, y = 1})
+      player.velocity = player.velocity + 0.1
+      player.fuel = player.fuel - 1
+      if(player.velocity > player.maxVelocity) player.velocity = player.maxVelocity;
+    end
   else 
     player.velocity = player.velocity - 0.1
     if(player.velocity < 0) player.velocity = 0
@@ -118,6 +125,7 @@ function _draw()
 		cls()
     drawCam()
     drawLevel()
+    drawFuel()
 	  for k,v in pairs(actors) do
     v:draw()
   end
