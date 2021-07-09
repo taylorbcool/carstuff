@@ -57,9 +57,35 @@ end
 
 dialog = {
   name = '',
-  dsprite = dsprite,
-
+  text = {},
+  position = 0,
+  complete = true
 }
+
+function dialog:new(o)
+  o = o or {}
+  setmetatable(o, self)
+  self.__index = self
+  return o
+end
+
+function dialog:load(convo)
+  self.name = convo.name
+  self.text = convo.text
+  self.complete = false
+end
+
+function dialog:next()
+  self.position += 1
+  if(self.position >= #self.text) then 
+    self.position = 0
+    self.complete = true
+  end
+end
+
+function dialog:draw()
+  if(self.complete == false) drawConvoBox(self.name, self.text[self.position + 1])
+end
 
 dsprite = {
   sx = 0,
@@ -99,6 +125,16 @@ function drawConvoBox(name, text)
   zeusSprite:draw()
   chrisSprite:draw()
 end
+
+convoA = { 
+    name = 'zeus',
+    text = {
+      "bet you're wondering",
+      "why you're here",
+      "nerd"
+    }
+  }
+
 
 zeusSprite = dsprite:new({
   sx = 24,
@@ -163,11 +199,17 @@ function _init()
       coords = center
     })
   }
+
+  currentDialog = dialog:new()
+  currentDialog:load(convoA)
 end
 
 function _update()
   local player = actors[1]
   local dir = { x = 0, y = 0}
+  if(btnp(5)) then 
+    currentDialog:next()
+  end
   if(btn(0)) then 
     dir = addcoords(dir, { x = -1, y = 0})
   end
@@ -191,7 +233,8 @@ function _draw()
     drawLevel()
 	  for k,v in pairs(actors) do
     v:draw()
-    drawConvoBox('zeus','be cooler if you did...')
+    --drawConvoBox('zeus','be cooler if you did...')
+    currentDialog:draw()
   end
 end
 __gfx__
