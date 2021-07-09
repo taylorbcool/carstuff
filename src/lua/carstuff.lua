@@ -39,7 +39,7 @@ actor = {
   name = '',
   sprite = 0,
   velocity = 0,
-  maxVelocity = 2,
+  maxVelocity = 60,
   direction = 90
 }
 
@@ -58,8 +58,8 @@ function worldCoordsToCoords(coords)
 end
 
 function actor:move(coords)
-  self.coords.x = self.coords.x + (coords.x * self.velocity)
-  self.coords.y = self.coords.y + (coords.y * self.velocity)
+  self.coords.x = self.coords.x + (coords.x * 2 * (self.velocity / self.maxVelocity))
+  self.coords.y = self.coords.y + (coords.y * 2 * (self.velocity / self.maxVelocity))
   return {
     x = self.coords.x,
     y = self.coords.y
@@ -108,8 +108,15 @@ function _update()
     player.velocity = player.velocity + 0.1
     if(player.velocity > player.maxVelocity) player.velocity = player.maxVelocity;
   else 
-    player.velocity = player.velocity - 0.1
-    if(player.velocity < 0) player.velocity = 0
+    player.velocity = player.velocity - player.velocity * 0.02
+    if(player.velocity < 1) player.velocity = 0 
+    if(player.velocity < 0) then
+      player.velocity = 0
+    end
+
+    if(player.velocity > 0) then
+      dir = addcoords(dir, {x = 0, y = 1})
+    end
   end
   cam = addcoords(player:move(dir), { x = - 127 /2.0, y = -127 /2.0})
 end
