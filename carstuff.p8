@@ -56,9 +56,9 @@ function actor:new(o)
 end
 
 dialog = {
-  name = '',
-  text = {},
   position = 0,
+  convos = {},
+  currentLine = 0,
   complete = true
 }
 
@@ -69,13 +69,53 @@ function dialog:new(o)
   return o
 end
 
-function dialog:load(convo)
-  self.name = convo.name
-  self.text = convo.text
+function dialog:load(c)
+  local newConvo = convo:new()
+  newConvo:load(c[1])
+  self.convos = c
+  self.position = 1
+  self.currentLine = newConvo
   self.complete = false
 end
 
 function dialog:next()
+  self.currentLine:next()
+  if(self.currentLine.complete) then 
+    self.position += 1
+    if(self.position > #self.convos) then 
+      self.complete = true
+    else
+      self.currentLine:load(self.convos[self.position])
+    end
+  end
+end
+
+function dialog:draw()
+  if(self.complete == false) self.currentLine:draw()
+end
+  
+
+convo = {
+  name = '',
+  text = {},
+  position = 0,
+  complete = true
+}
+
+function convo:new(o)
+  o = o or {}
+  setmetatable(o, self)
+  self.__index = self
+  return o
+end
+
+function convo:load(c)
+  self.name = c.name
+  self.text = c.text
+  self.complete = false
+end
+
+function convo:next()
   self.position += 1
   if(self.position >= #self.text) then 
     self.position = 0
@@ -83,9 +123,11 @@ function dialog:next()
   end
 end
 
-function dialog:draw()
+function convo:draw()
   if(self.complete == false) drawConvoBox(self.name, self.text[self.position + 1])
 end
+
+
 
 dsprite = {
   sx = 0,
@@ -126,14 +168,28 @@ function drawConvoBox(name, text)
   chrisSprite:draw()
 end
 
-convoA = { 
+convoA = {
+  { 
     name = 'zeus',
     text = {
       "bet you're wondering",
       "why you're here",
-      "nerd"
+    }
+  },
+  {
+    name = 'bob',
+    text = {
+      '...'
+    }
+  },
+  {
+    name = 'zeus',
+    text = {
+      '...',
+      '...nerd'
     }
   }
+}
 
 
 zeusSprite = dsprite:new({
