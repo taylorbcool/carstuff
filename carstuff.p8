@@ -42,9 +42,8 @@ actor = {
   name = '',
   sprite = 0, -- changes with powerups?
   velocity = 0,
-  maxVelocity = 60,
-  direction = 90,
   acceleration = 0.2, -- changes with powerups
+  maxVelocity = 5, -- changes with powerups
   fuel = 50, -- changes with powerups
   steering = 0.25, -- changes with powerups
   braking = 3, -- changes with powerups
@@ -65,8 +64,8 @@ function worldCoordsToCoords(coords)
 end
 
 function actor:move(coords)
-  self.coords.x = self.coords.x + (coords.x * 2 * (self.velocity / self.maxVelocity))
-  self.coords.y = self.coords.y + (coords.y * 2 * (self.velocity / self.maxVelocity))
+  self.coords.x = self.coords.x + (coords.x * self.velocity)
+  self.coords.y = self.coords.y + (coords.y * self.velocity)
   return {
     x = self.coords.x,
     y = self.coords.y
@@ -91,8 +90,8 @@ function drawmap()
 end
 
 function drawFuel()
-  --print(flr(actors[1].fuel), 25, 5, 7)
-  print("fuel: "..flr(actors[1].fuel), actors[1].coords.x - 127 / 2 + 5, actors[1].coords.y - 127 / 2 + 5, 7)
+  print(actors[1].fuel, 25, 5, 7)
+  print("fuel:", 5, 5, 7)
 end
 
 function _init()
@@ -117,27 +116,13 @@ function _update()
     dir = addcoords(dir, { x = player.steering, y = 0})
   end
   -- accelerating
-  currentVelocity = player.velocity
   if(btn(4)) then
-    dir = addcoords(dir, { x = 0, y = 1})
-    player.velocity = player.velocity + 0.1
-    if(player.velocity > player.maxVelocity) player.velocity = player.maxVelocity;
-    player.fuel -= 0.4
-    if(player.fuel < 0) player.fuel = 0
-  else 
-    player.velocity = player.velocity - player.velocity * 0.02
-    if(player.velocity < 1) player.velocity = 0 
-    if(player.velocity < 0) then
-      player.velocity = 0
+    if(player.fuel > 0) then
+      dir = addcoords(dir, { x = 0, y = 1})
+      player.velocity = player.velocity + player.acceleration
+      player.fuel = player.fuel - 1
+      if(player.velocity > player.maxVelocity) player.velocity = player.maxVelocity;
     end
-
-    if(player.velocity > 0) then
-      dir = addcoords(dir, {x = 0, y = 1})
-      player.fuel -= 0.1
-      if(player.fuel < 0) player.fuel = 0
-    end
-
-
   end
   -- braking
   if(btn(5)) then
@@ -145,7 +130,8 @@ function _update()
     player.velocity = player.velocity - player.braking
   end
   -- coasting
-  if(player.fuel <= 0) player.velocity = currentVelocity - currentVelocity * 0.1
+    player.velocity = player.velocity - 0.0001
+  if(player.velocity < 0) player.velocity = 0
   cam = addcoords(player:move(dir), { x = - 127 /2.0, y = -127 /2.0})
 end
 
@@ -328,4 +314,3 @@ __sfx__
 011800000000000000000000f5700f560000001d0701d060000001d0701d0601f070000001f070000001f0701d0701d0600f5700f5600f570000001d0701d0601d0701d0701d0602407024070000000000000000
 __music__
 00 01020304
-
