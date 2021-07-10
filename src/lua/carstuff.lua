@@ -39,10 +39,13 @@ actor = {
     y = 0
   },
   name = '',
-  sprite = 0,
+  sprite = 0, -- changes with powerups?
   velocity = 0,
-  maxVelocity = 2,
-  direction = 90
+  acceleration = 0.2, -- changes with powerups
+  maxVelocity = 5, -- changes with powerups
+  fuel = 50, -- changes with powerups
+  steering = 0.25, -- changes with powerups
+  braking = 3, -- changes with powerups
 }
 
 function actor:new(o)
@@ -228,7 +231,7 @@ end
 
 
 function actor:draw()
-		-- print(self.coords.x..','..self.coords.y, self.coords.x, self.coords.y + 10)
+  -- print(self.coords.x..','..self.coords.y, self.coords.x, self.coords.y + 10)
   spr(self.sprite, self.coords.x, self.coords.y)
 end
 
@@ -241,6 +244,11 @@ end
 
 function drawmap()
   map(0, 0, 0, 0, 32, 64)
+end
+
+function drawFuel()
+  print(actors[1].fuel, 25, 5, 7)
+  print("fuel:", 5, 5, 7)
 end
 
 function _init()
@@ -264,19 +272,28 @@ function _update()
     currentDialog:next()
   end
   if(btn(0)) then 
-    dir = addcoords(dir, { x = -1, y = 0})
+    dir = addcoords(dir, { x = -player.steering, y = 0})
   end
   if(btn(1)) then 
-    dir = addcoords(dir, { x = 1, y = 0})
+    dir = addcoords(dir, { x = player.steering, y = 0})
   end
+  -- accelerating
   if(btn(4)) then
-    dir = addcoords(dir, { x = 0, y = 1})
-    player.velocity = player.velocity + 0.1
-    if(player.velocity > player.maxVelocity) player.velocity = player.maxVelocity;
-  else 
-    player.velocity = player.velocity - 0.1
-    if(player.velocity < 0) player.velocity = 0
+    if(player.fuel > 0) then
+      dir = addcoords(dir, { x = 0, y = 1})
+      player.velocity = player.velocity + player.acceleration
+      player.fuel = player.fuel - 1
+      if(player.velocity > player.maxVelocity) player.velocity = player.maxVelocity;
+    end
   end
+  -- braking
+  if(btn(5)) then
+    if(player.velocity < 0) player.velocity = 0
+    player.velocity = player.velocity - player.braking
+  end
+  -- coasting
+    player.velocity = player.velocity - 0.0001
+  if(player.velocity < 0) player.velocity = 0
   cam = addcoords(player:move(dir), { x = - 127 /2.0, y = -127 /2.0})
 end
 
@@ -284,6 +301,7 @@ function _draw()
 		cls()
     --drawCam()
     drawLevel()
+    drawFuel()
 	  for k,v in pairs(actors) do
     v:draw()
     --drawConvoBox('zeus','be cooler if you did...')
