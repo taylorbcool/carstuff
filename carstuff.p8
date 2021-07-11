@@ -149,7 +149,50 @@ function dialogState:controller()
   end
 end
 
+-- Game Mode - Game State
 
+playerState = {
+  name = '',
+  sprite = 0, -- changes with powerups?
+  velocity = 0,
+  acceleration = 0.2, -- changes with powerups
+  maxVelocity = 5, -- changes with powerups
+  fuel = 50, -- changes with powerups
+  steering = 0.25, -- changes with powerups
+  braking = 3, -- changes with powerups
+}
+
+function playerState:move(coords)
+  self.coords.x = self.coords.x + (coords.x * self.velocity)
+  self.coords.y = self.coords.y + (coords.y * self.velocity)
+  return {
+    x = self.coords.x,
+    y = self.coords.y
+  }
+end
+
+
+function playerState:draw()
+  spr(self.sprite, self.coords.x, self.coords.y)
+end
+
+function playerState:new(o)
+  o = o or {}
+  setmetatable(o, self)
+  self.__index = self
+  return o
+end
+
+gState = {
+  player = playerState:new(o)
+}
+
+function gState:new(o)
+  o = o or {}
+  setmetatable(o, self)
+  self.__index = self
+  return o
+end
 
 
 
