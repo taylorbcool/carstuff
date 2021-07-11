@@ -22,7 +22,6 @@ level = {
   y = 0
 }
 
-inDialog = false
 
 -- Object Declarations
 
@@ -252,44 +251,7 @@ end
 
 
 
-dialog = {
-  position = 0,
-  convos = {},
-  currentLine = 0,
-  complete = true
-}
 
-function dialog:new(o)
-  o = o or {}
-  setmetatable(o, self)
-  self.__index = self
-  return o
-end
-
-function dialog:load(c)
-  local newConvo = convo:new()
-  newConvo:load(c[1])
-  self.convos = c
-  self.position = 1
-  self.currentLine = newConvo
-  self.complete = false
-end
-
-function dialog:next()
-  self.currentLine:next()
-  if(self.currentLine.complete) then 
-    self.position += 1
-    if(self.position > #self.convos) then 
-      self.complete = true
-    else
-      self.currentLine:load(self.convos[self.position])
-    end
-  end
-end
-
-function dialog:draw()
-  if(self.complete == false) self.currentLine:draw()
-end
   
 
 convo = {
@@ -436,8 +398,6 @@ function _init()
     })
   }
 
-  currentDialog = dialog:new()
-  currentDialog:load(convoA)
   gameState.dialog = dialogState:new()
   gameState.dialog:load(convoA)
 end
