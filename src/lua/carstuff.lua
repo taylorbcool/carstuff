@@ -113,13 +113,14 @@ function dialogState:new(o)
   return o
 end
 
-function dialogState:load(c)
+function dialogState:load(c, nextMode)
   local newConvo = convo:new()
   newConvo:load(c[1])
   self.convos = c
   self.position = 1
   self.currentLine = newConvo
   self.complete = false
+  self.nextMode = nextMode or 'GAME'
 end
 
 function dialogState:next()
@@ -128,6 +129,7 @@ function dialogState:next()
     self.position += 1
     if(self.position > #self.convos) then 
       self.complete = true
+      gameState.mode = self.nextMode
     else
       self.currentLine:load(self.convos[self.position])
     end
@@ -149,7 +151,9 @@ end
 
 playerState = {
   name = '',
-  sprite = 0, -- changes with powerups?
+  x = 0,
+  y = 0,
+  sprite = 1, -- changes with powerups?
   velocity = 0,
   acceleration = 0.2, -- changes with powerups
   maxVelocity = 5, -- changes with powerups
@@ -159,17 +163,17 @@ playerState = {
 }
 
 function playerState:move(coords)
-  self.coords.x = self.coords.x + (coords.x * self.velocity)
-  self.coords.y = self.coords.y + (coords.y * self.velocity)
+  self.x = self.x + (coords.x * self.velocity)
+  self.y = self.y + (coords.y * self.velocity)
   return {
-    x = self.coords.x,
-    y = self.coords.y
+    x = self.x,
+    y = self.y
   }
 end
 
 
 function playerState:draw()
-  spr(self.sprite, self.coords.x, self.coords.y)
+  spr(self.sprite, self.x, self.y)
 end
 
 function playerState:new(o)
@@ -190,6 +194,41 @@ function gState:new(o)
   return o
 end
 
+function gState:controller()
+  local dir = { x = 0, y = 0}
+  if(btn() > 0) gameState.debug = 'button!'
+  
+  if(btn(0)) then 
+    dir = addcoords(dir, { x = -self.player.steering, y = 0})
+  end
+  if(btn(1)) then 
+    dir = addcoords(dir, { x = self.player.steering, y = 0})
+  end
+  -- accelerating
+  if(btn(4)) then
+    if(self.player.fuel > 0) then
+      dir = addcoords(dir, { x = 0, y = 1})
+      self.player.velocity = self.player.velocity + self.player.acceleration
+      self.player.fuel = self.player.fuel - 1
+      if(self.player.velocity > self.player.maxVelocity) self.player.velocity = self.player.maxVelocity;
+    end
+  end
+  -- braking
+  if(btn(5)) then
+    if(self.player.velocity < 0) self.player.velocity = 0
+    self.player.velocity = self.player.velocity - self.player.braking
+  end
+  -- coasting
+  self.player.velocity = self.player.velocity - 0.0001
+  if(self.player.velocity < 0) self.player.velocity = 0
+
+  self.player:move(dir)
+end
+
+function gState:draw()
+  cls()
+  self.player:draw()
+end
 
 
 
@@ -388,6 +427,8 @@ function drawFuel()
   print("fuel:", 5, 5, 7)
 end
 
+-- Game loop
+
 function _init()
   -- track all the actors
   actors = {
@@ -400,41 +441,45 @@ function _init()
 
   gameState.dialog = dialogState:new()
   gameState.dialog:load(convoA)
+  gameState.game = gState:new()
+  --gameState.mode = 'GAME'
 end
 
 function _update()
-  local player = actors[1]
-  local dir = { x = 0, y = 0}
+  --local player = actors[1]
+  --local dir = { x = 0, y = 0}
   
-  if(btn(0)) then 
-    dir = addcoords(dir, { x = -player.steering, y = 0})
-  end
-  if(btn(1)) then 
-    dir = addcoords(dir, { x = player.steering, y = 0})
-  end
-  -- accelerating
-  if(btn(4)) then
-    if(player.fuel > 0) then
-      dir = addcoords(dir, { x = 0, y = 1})
-      player.velocity = player.velocity + player.acceleration
-      player.fuel = player.fuel - 1
-      if(player.velocity > player.maxVelocity) player.velocity = player.maxVelocity;
-    end
-  end
-  -- braking
-  if(btn(5)) then
-    if(player.velocity < 0) player.velocity = 0
-    player.velocity = player.velocity - player.braking
-  end
-  -- coasting
-    player.velocity = player.velocity - 0.0001
-  if(player.velocity < 0) player.velocity = 0
+  --if(btn(0)) then 
+  --  dir = addcoords(dir, { x = -player.steering, y = 0})
+  --end
+  --if(btn(1)) then 
+  --  dir = addcoords(dir, { x = player.steering, y = 0})
+  --end
+  ---- accelerating
+  --if(btn(4)) then
+  --  if(player.fuel > 0) then
+  --    dir = addcoords(dir, { x = 0, y = 1})
+  --    player.velocity = player.velocity + player.acceleration
+  --    player.fuel = player.fuel - 1
+  --    if(player.velocity > player.maxVelocity) player.velocity = player.maxVelocity;
+  --  end
+  --end
+  ---- braking
+  --if(btn(5)) then
+  --  if(player.velocity < 0) player.velocity = 0
+  --  player.velocity = player.velocity - player.braking
+  --end
+  ---- coasting
+  --  player.velocity = player.velocity - 0.0001
+  --if(player.velocity < 0) player.velocity = 0
 
-  cam = addcoords(player:move(dir), { x = - 127 /2.0, y = -127 /2.0})
+  --cam = addcoords(player:move(dir), { x = - 127 /2.0, y = -127 /2.0})
   if(gameState.mode == 'TITLE') then
     title.controller()
   elseif(gameState.mode == 'DIALOG') then 
     gameState.dialog:controller()
+  elseif(gameState.mode == 'GAME') then
+    gameState.game:controller()
   end
 end
 
@@ -447,6 +492,10 @@ function _draw()
 
   if(gameState.mode == 'DIALOG') then
     gameState.dialog:draw()
+  end
+
+  if(gameState.mode == 'GAME') then
+    gameState.game:draw()
   end
 
   print(gameState.debug, 10, 10, 14)
