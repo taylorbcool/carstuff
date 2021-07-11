@@ -1,6 +1,10 @@
 pico-8 cartridge // http://www.pico-8.com
 version 32
 __lua__
+gameState = {
+  mode = 'TITLE',
+  debug = ''
+}
 world_min = {
   x = 0,
   y = 5
@@ -23,18 +27,132 @@ level = {
 
 inDialog = false
 
-function drawLevel()
-  map(level.x, level.y, 0, 0, 128, 32)
-end
+-- Object Declarations
 
-cam = {
-  x = 0, 
-  y = 0
+-- Game Modes - Title
+title = {
+
 }
 
-function drawCam()
-  camera(cam.x, cam.y)
+function title.draw()
+  cls()
+  -- draw the title
+  local ttl = 'carstuff: the game'
+  local ttlc = genCenterStrCoords(ttl, 10)
+  print(ttl, ttlc.x, ttlc.y, 2)
+  local pr2c = 'press any button to continue...'
+  local pr2cc = genCenterStrCoords(pr2c, 127/2)
+  print(pr2c, pr2cc.x, pr2cc.y, 6)
+
+  -- draw the prompt
+  drawHogFooter(0,122)
 end
+
+function title.controller()
+  if(btnp() > 0) gameState.mode = 'DIALOG'
+end
+
+dsprite = {
+  sx = 0,
+  sy = 0,
+  sh = 8,
+  sw = 8,
+  dx = 0,
+  dy = 0,
+  alpha = 0
+}
+
+function dsprite:new(o)
+  o = o or {}
+  setmetatable(o, self)
+  self.__index = self
+  return o
+end
+
+function dsprite:draw()
+  palt(self.alpha, true)
+  if(self.alpha != 0) palt(0, false)
+  sspr(self.sx, self.sy, self.sw, self.sh, self.dx, self.dy)
+  if(self.alpha != 0) then
+    palt(self.alpha, false)
+    palt(0, true)
+  end
+end
+
+hogSprite = dsprite:new({
+  sx = 2,
+  sy = 10,
+  sh = 14,
+  sw = 12,
+  alpha = 0,
+  dx = 0,
+  dy = 0
+})
+
+function drawHogFooter(x,y)
+  local txt = 'a hogsquad production'
+  local coords = genCenterStrCoords(txt, y);
+  print(txt, coords.x, coords.y, 7)
+  coords = getStrCenter(txt, coords.x, coords.y)
+  hogSprite.dx = coords.x - 8
+  hogSprite.dy = coords.y - 16
+  hogSprite:draw()
+end
+
+
+-- Game Mode - Dialog
+
+dialogState = {
+  position = 0,
+  convos = {},
+  currentLine = 0,
+  complete = true,
+  showGame = false,
+}
+
+function dialogState:new(o)
+  o = o or {}
+  setmetatable(o, self)
+  self.__index = self
+  return o
+end
+
+function dialogState:load(c)
+  local newConvo = convo:new()
+  newConvo:load(c[1])
+  self.convos = c
+  self.position = 1
+  self.currentLine = newConvo
+  self.complete = false
+end
+
+function dialogState:next()
+  self.currentLine:next()
+  if(self.currentLine.complete) then 
+    self.position += 1
+    if(self.position > #self.convos) then 
+      self.complete = true
+    else
+      self.currentLine:load(self.convos[self.position])
+    end
+  end
+end
+
+function dialogState:draw()
+  cls();
+  if(self.complete == false) self.currentLine:draw()
+end
+
+function dialogState:controller()
+  if(btnp(4)) then 
+    self:next()
+  end
+end
+
+
+
+
+
 
 actor = {
   coords = {
@@ -57,6 +175,42 @@ function actor:new(o)
   self.__index = self
   return o
 end
+
+-- util functions
+
+function getStrCenter(str, x, y) 
+  mid = flr((#str *4) / 2)
+  return {
+    x = x + mid,
+    y = y
+  }
+end
+
+function genCenterStrCoords(str, y)
+  pixLen = #str * 4
+  offset = flr((127 - pixLen) / 2)
+  return {
+    x = offset,
+    y = y
+  }
+end
+
+function drawLevel()
+  map(level.x, level.y, 0, 0, 128, 32)
+end
+
+cam = {
+  x = 0, 
+  y = 0
+}
+
+function drawCam()
+  camera(cam.x, cam.y)
+end
+
+
+
+
 
 dialog = {
   position = 0,
@@ -132,32 +286,9 @@ end
 
 
 
-dsprite = {
-  sx = 0,
-  sy = 0,
-  sh = 8,
-  sw = 8,
-  dx = 0,
-  dy = 0,
-  alpha = 0
-}
 
-function dsprite:new(o)
-  o = o or {}
-  setmetatable(o, self)
-  self.__index = self
-  return o
-end
 
-function dsprite:draw()
-  palt(self.alpha, true)
-  if(self.alpha != 0) palt(0, false)
-  sspr(self.sx, self.sy, self.sw, self.sh, self.dx, self.dy)
-  if(self.alpha != 0) then
-    palt(self.alpha, false)
-    palt(0, true)
-  end
-end
+
 
 function drawConvoBox(name, text)
   palt(0, false)
@@ -216,6 +347,7 @@ chrisSprite = dsprite:new({
 })
 
 
+
 function worldCoordsToCoords(coords)
   return {
     x = coords.x,
@@ -266,14 +398,14 @@ function _init()
 
   currentDialog = dialog:new()
   currentDialog:load(convoA)
+  gameState.dialog = dialogState:new()
+  gameState.dialog:load(convoA)
 end
 
 function _update()
   local player = actors[1]
   local dir = { x = 0, y = 0}
-  if(btnp(5)) then 
-    currentDialog:next()
-  end
+  
   if(btn(0)) then 
     dir = addcoords(dir, { x = -player.steering, y = 0})
   end
@@ -297,19 +429,27 @@ function _update()
   -- coasting
     player.velocity = player.velocity - 0.0001
   if(player.velocity < 0) player.velocity = 0
+
   cam = addcoords(player:move(dir), { x = - 127 /2.0, y = -127 /2.0})
+  if(gameState.mode == 'TITLE') then
+    title.controller()
+  elseif(gameState.mode == 'DIALOG') then 
+    gameState.dialog:controller()
+  end
 end
 
+
+
 function _draw()
-		cls()
-    --drawCam()
-    drawLevel()
-    drawFuel()
-	  for k,v in pairs(actors) do
-    v:draw()
-    --drawConvoBox('zeus','be cooler if you did...')
-    currentDialog:draw()
+  if(gameState.mode == 'TITLE') then 
+    title:draw()
   end
+
+  if(gameState.mode == 'DIALOG') then
+    gameState.dialog:draw()
+  end
+
+  print(gameState.debug, 10, 10, 14)
 end
 __gfx__
 0000000008666680555555553333333357555555555aa55555555575555555553333333356556655575555550000000000000000555555750000000000000000
@@ -481,4 +621,3 @@ __sfx__
 011800000000000000000000f5500f540000001d0501d040000001d0501d0401f050000001f050000001f0501d0501d0400f5500f5400f550000001d0501d0401d0501d0401d0502405024040000000000000000
 __music__
 00 01020304
-
