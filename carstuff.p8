@@ -20,11 +20,6 @@ center = {
   y = 127 /2
 }
 
-level = {
-  x = 0,
-  y = 0
-}
-
 
 -- Object Declarations
 
@@ -150,6 +145,24 @@ function dialogState:controller()
   end
 end
 
+-- Map
+
+mapState = {
+  x = 0,
+  y =0
+}
+
+function mapState:new(o)
+  o = o or {}
+  setmetatable(o, self)
+  self.__index = self
+  return o
+end
+
+function mapState:draw()
+  map(self.x, self.y, 0, 0, 32, 128)
+end
+
 -- Cam
 
 camState = {
@@ -205,10 +218,17 @@ function playerState:new(o)
 end
 
 gState = {
-  player = playerState:new(),
+  player = playerState:new({
+    x = 127 / 2,
+    y = 127 / 2
+  }),
   cam = camState:new({
-    x = 0 - 127 / 2,
-    y = 0 - 127 / 2
+    x = 0,
+    y = 0
+  }),
+  map = mapState:new({
+    x = 0,
+    y = 0
   })
 }
 
@@ -255,7 +275,9 @@ end
 
 function gState:draw()
   cls()
+  self.map:draw()
   self.cam:draw()
+
   self.player:draw()
   self:drawFuel()
 end
@@ -280,9 +302,6 @@ function genCenterStrCoords(str, y)
   }
 end
 
-function drawLevel()
-  map(level.x, level.y, 0, 0, 128, 32)
-end
 
 convo = {
   name = '',
@@ -394,10 +413,6 @@ function addcoords(c1, c2)
   }
 end
 
-function drawmap()
-  map(0, 0, 0, 0, 32, 64)
-end
-
 
 
 -- Game loop
@@ -410,7 +425,7 @@ function _init()
 end
 
 function _update()
-  gameState.cam:draw()
+  --gameState.cam:draw()
   if(gameState.mode == 'TITLE') then
     title.controller()
   elseif(gameState.mode == 'DIALOG') then 
