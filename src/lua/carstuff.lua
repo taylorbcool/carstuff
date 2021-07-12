@@ -299,6 +299,22 @@ function genCenterStrCoords(str, y)
   }
 end
 
+-- map utils
+function mapTl(hex)
+  local n = tonum('0x'..hex) 
+  local y = 0
+  if(n > 7) y = 16
+  return {
+    x = (n % 8) * 16,
+    y = y
+  }
+end
+
+function drawChunk(hex, x, y)
+  local tl = mapTl(hex)
+  map(tl.x, tl.y, x, y, 16,16)
+end
+
 
 convo = {
   name = '',
@@ -448,4 +464,5 @@ function _draw()
   end
 
   print(gameState.debug, 10, 10, 14)
+  drawChunk('0', 0, 0)
 end
