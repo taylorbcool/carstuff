@@ -1,6 +1,10 @@
 pico-8 cartridge // http://www.pico-8.com
 version 32
 __lua__
+gameState = {
+  mode = 'TITLE',
+  debug = ''
+}
 world_min = {
   x = 0,
   y = 5
@@ -16,33 +20,174 @@ center = {
   y = 127 /2
 }
 
-level = {
+
+-- Object Declarations
+
+-- Game Modes - Title
+title = {
+
+}
+
+function title.draw()
+  cls()
+  -- draw the title
+  local ttl = 'carstuff: the game'
+  local ttlc = genCenterStrCoords(ttl, 10)
+  print(ttl, ttlc.x, ttlc.y, 2)
+  local pr2c = 'press any button to continue...'
+  local pr2cc = genCenterStrCoords(pr2c, 127/2)
+  print(pr2c, pr2cc.x, pr2cc.y, 6)
+
+  -- draw the prompt
+  drawHogFooter(0,122)
+end
+
+function title.controller()
+  if(btnp() > 0) gameState.mode = 'DIALOG'
+end
+
+dsprite = {
+  sx = 0,
+  sy = 0,
+  sh = 8,
+  sw = 8,
+  dx = 0,
+  dy = 0,
+  alpha = 0
+}
+
+function dsprite:new(o)
+  o = o or {}
+  setmetatable(o, self)
+  self.__index = self
+  return o
+end
+
+function dsprite:draw()
+  palt(self.alpha, true)
+  if(self.alpha != 0) palt(0, false)
+  sspr(self.sx, self.sy, self.sw, self.sh, self.dx, self.dy)
+  if(self.alpha != 0) then
+    palt(self.alpha, false)
+    palt(0, true)
+  end
+end
+
+hogSprite = dsprite:new({
+  sx = 2,
+  sy = 10,
+  sh = 14,
+  sw = 12,
+  alpha = 0,
+  dx = 0,
+  dy = 0
+})
+
+function drawHogFooter(x,y)
+  local txt = 'a hogsquad production'
+  local coords = genCenterStrCoords(txt, y);
+  print(txt, coords.x, coords.y, 7)
+  coords = getStrCenter(txt, coords.x, coords.y)
+  hogSprite.dx = coords.x - 8
+  hogSprite.dy = coords.y - 16
+  hogSprite:draw()
+end
+
+
+-- Game Mode - Dialog
+
+dialogState = {
+  position = 0,
+  convos = {},
+  currentLine = 0,
+  complete = true,
+  showGame = false,
+}
+
+function dialogState:new(o)
+  o = o or {}
+  setmetatable(o, self)
+  self.__index = self
+  return o
+end
+
+function dialogState:load(c, nextMode)
+  local newConvo = convo:new()
+  newConvo:load(c[1])
+  self.convos = c
+  self.position = 1
+  self.currentLine = newConvo
+  self.complete = false
+  self.nextMode = nextMode or 'GAME'
+end
+
+function dialogState:next()
+  self.currentLine:next()
+  if(self.currentLine.complete) then 
+    self.position += 1
+    if(self.position > #self.convos) then 
+      self.complete = true
+      gameState.mode = self.nextMode
+    else
+      self.currentLine:load(self.convos[self.position])
+    end
+  end
+end
+
+function dialogState:draw()
+  cls();
+  if(self.complete == false) self.currentLine:draw()
+end
+
+function dialogState:controller()
+  if(btnp(4)) then 
+    self:next()
+  end
+end
+
+-- Map
+
+mapState = {
+  x = 0,
+  y =0
+}
+
+function mapState:new(o)
+  o = o or {}
+  setmetatable(o, self)
+  self.__index = self
+  return o
+end
+
+function mapState:draw()
+  map(self.x, self.y, 0, 0, 32, 128)
+end
+
+-- Cam
+
+camState = {
   x = 0,
   y = 0
 }
 
-inDialog = false
-
-function drawLevel()
-  map(level.x, level.y, 0, 0, 128, 32)
+function camState:new(o)
+  o = o or {}
+  setmetatable(o, self)
+  self.__index = self
+  return o
 end
 
-cam = {
-  x = 0, 
-  y = 0
-}
-
-function drawCam()
-  camera(cam.x, cam.y)
+function camState:draw()
+  camera(self.x, self.y)
 end
 
-actor = {
-  coords = {
-    x = 0,
-    y = 0
-  },
+-- Game Mode - Game State
+
+playerState = {
   name = '',
-  sprite = 0, -- changes with powerups?
+  x = 0,
+  y = 0,
+  sprite = 1, -- changes with powerups?
   velocity = 0,
   acceleration = 0.2, -- changes with powerups
   maxVelocity = 5, -- changes with powerups
@@ -51,52 +196,112 @@ actor = {
   braking = 3, -- changes with powerups
 }
 
-function actor:new(o)
+function playerState:move(coords)
+  self.x = self.x + (coords.x * self.velocity)
+  self.y = self.y + (coords.y * self.velocity)
+  return {
+    x = self.x,
+    y = self.y
+  }
+end
+
+
+function playerState:draw()
+  spr(self.sprite, self.x, self.y)
+end
+
+function playerState:new(o)
   o = o or {}
   setmetatable(o, self)
   self.__index = self
   return o
 end
 
-dialog = {
-  position = 0,
-  convos = {},
-  currentLine = 0,
-  complete = true
+gState = {
+  player = playerState:new({
+    x = 127 / 2,
+    y = 127 / 2
+  }),
+  cam = camState:new({
+    x = 0,
+    y = 0
+  }),
+  map = mapState:new({
+    x = 0,
+    y = 0
+  })
 }
 
-function dialog:new(o)
+function gState:new(o)
   o = o or {}
   setmetatable(o, self)
   self.__index = self
   return o
 end
 
-function dialog:load(c)
-  local newConvo = convo:new()
-  newConvo:load(c[1])
-  self.convos = c
-  self.position = 1
-  self.currentLine = newConvo
-  self.complete = false
-end
-
-function dialog:next()
-  self.currentLine:next()
-  if(self.currentLine.complete) then 
-    self.position += 1
-    if(self.position > #self.convos) then 
-      self.complete = true
-    else
-      self.currentLine:load(self.convos[self.position])
+function gState:controller()
+  local dir = { x = 0, y = 0}
+  
+  if(btn(0)) then 
+    dir = addcoords(dir, { x = -self.player.steering, y = 0})
+  end
+  if(btn(1)) then 
+    dir = addcoords(dir, { x = self.player.steering, y = 0})
+  end
+  -- accelerating
+  if(btn(4)) then
+    if(self.player.fuel > 0) then
+      dir = addcoords(dir, { x = 0, y = 1})
+      self.player.velocity = self.player.velocity + self.player.acceleration
+      self.player.fuel = self.player.fuel - 1
+      if(self.player.velocity > self.player.maxVelocity) self.player.velocity = self.player.maxVelocity;
     end
   end
+  -- braking
+  if(btn(5)) then
+    if(self.player.velocity < 0) self.player.velocity = 0
+    self.player.velocity = self.player.velocity - self.player.braking
+  end
+  -- coasting
+  self.player.velocity = self.player.velocity - 0.0001
+  if(self.player.velocity < 0) self.player.velocity = 0
+
+  self.cam = camState:new(addcoords(self.player:move(dir), { x = - 127 /2.0, y = -127 /2.0}))
 end
 
-function dialog:draw()
-  if(self.complete == false) self.currentLine:draw()
+function gState:drawFuel()
+  print('fuel: '..self.player.fuel, self.player.x - 127/2, self.player.y - 127/2, 7)
 end
-  
+
+function gState:draw()
+  cls()
+  self.map:draw()
+  self.cam:draw()
+
+  self.player:draw()
+  self:drawFuel()
+end
+
+
+-- util functions
+
+function getStrCenter(str, x, y) 
+  mid = flr((#str *4) / 2)
+  return {
+    x = x + mid,
+    y = y
+  }
+end
+
+function genCenterStrCoords(str, y)
+  pixLen = #str * 4
+  offset = flr((127 - pixLen) / 2)
+  return {
+    x = offset,
+    y = y
+  }
+end
+
 
 convo = {
   name = '',
@@ -132,32 +337,9 @@ end
 
 
 
-dsprite = {
-  sx = 0,
-  sy = 0,
-  sh = 8,
-  sw = 8,
-  dx = 0,
-  dy = 0,
-  alpha = 0
-}
 
-function dsprite:new(o)
-  o = o or {}
-  setmetatable(o, self)
-  self.__index = self
-  return o
-end
 
-function dsprite:draw()
-  palt(self.alpha, true)
-  if(self.alpha != 0) palt(0, false)
-  sspr(self.sx, self.sy, self.sw, self.sh, self.dx, self.dy)
-  if(self.alpha != 0) then
-    palt(self.alpha, false)
-    palt(0, true)
-  end
-end
+
 
 function drawConvoBox(name, text)
   palt(0, false)
@@ -216,26 +398,12 @@ chrisSprite = dsprite:new({
 })
 
 
+
 function worldCoordsToCoords(coords)
   return {
     x = coords.x,
     y = coords.y + 5
   }
-end
-
-function actor:move(coords)
-  self.coords.x = self.coords.x + (coords.x * self.velocity)
-  self.coords.y = self.coords.y + (coords.y * self.velocity)
-  return {
-    x = self.coords.x,
-    y = self.coords.y
-  }
-end
-
-
-function actor:draw()
-  -- print(self.coords.x..','..self.coords.y, self.coords.x, self.coords.y + 10)
-  spr(self.sprite, self.coords.x, self.coords.y)
 end
 
 function addcoords(c1, c2)
@@ -245,71 +413,44 @@ function addcoords(c1, c2)
   }
 end
 
-function drawmap()
-  map(0, 0, 0, 0, 32, 64)
-end
 
-function drawFuel()
-  print(actors[1].fuel, 25, 5, 7)
-  print("fuel:", 5, 5, 7)
-end
+
+-- Game loop
 
 function _init()
-  -- track all the actors
-  actors = {
-    actor:new({
-      name = 'player',
-      sprite = 1,
-      coords = center
-    })
-  }
-
-  currentDialog = dialog:new()
-  currentDialog:load(convoA)
+  gameState.dialog = dialogState:new()
+  gameState.dialog:load(convoA)
+  gameState.game = gState:new()
+  gameState.cam = camState:new()
 end
 
 function _update()
-  local player = actors[1]
-  local dir = { x = 0, y = 0}
-  if(btnp(5)) then 
-    currentDialog:next()
+  --gameState.cam:draw()
+  if(gameState.mode == 'TITLE') then
+    title.controller()
+  elseif(gameState.mode == 'DIALOG') then 
+    gameState.dialog:controller()
+  elseif(gameState.mode == 'GAME') then
+    gameState.game:controller()
   end
-  if(btn(0)) then 
-    dir = addcoords(dir, { x = -player.steering, y = 0})
-  end
-  if(btn(1)) then 
-    dir = addcoords(dir, { x = player.steering, y = 0})
-  end
-  -- accelerating
-  if(btn(4)) then
-    if(player.fuel > 0) then
-      dir = addcoords(dir, { x = 0, y = 1})
-      player.velocity = player.velocity + player.acceleration
-      player.fuel = player.fuel - 1
-      if(player.velocity > player.maxVelocity) player.velocity = player.maxVelocity;
-    end
-  end
-  -- braking
-  if(btn(5)) then
-    if(player.velocity < 0) player.velocity = 0
-    player.velocity = player.velocity - player.braking
-  end
-  -- coasting
-    player.velocity = player.velocity - 0.0001
-  if(player.velocity < 0) player.velocity = 0
-  cam = addcoords(player:move(dir), { x = - 127 /2.0, y = -127 /2.0})
 end
 
+
+
 function _draw()
-		cls()
-    --drawCam()
-    drawLevel()
-    drawFuel()
-	  for k,v in pairs(actors) do
-    v:draw()
-    --drawConvoBox('zeus','be cooler if you did...')
-    currentDialog:draw()
+  if(gameState.mode == 'TITLE') then 
+    title:draw()
   end
+
+  if(gameState.mode == 'DIALOG') then
+    gameState.dialog:draw()
+  end
+
+  if(gameState.mode == 'GAME') then
+    gameState.game:draw()
+  end
+
+  print(gameState.debug, 10, 10, 14)
 end
 __gfx__
 0000000008666680555555553333333357555555555aa55555555575555555553333333356556655575555550000000000000000555555750000000000000000
@@ -319,23 +460,23 @@ __gfx__
 0000000007dddd70aa5555aa3333333357555555555555555555557555575555333bb33366655655557555550000000000000000555557550000000000000000
 0000000007dddd7055555555333333335755555555555555555555755557555533bbbb3366556665555755550000000000000000555575550000000000000000
 0000000007555570555555553333333357555555555aa55555555575555555553bbbbbb366555665555755550000000000000000555575550000000000000000
-000000000a5555a0555555553333333357555555555aa5555555557555555555bbbbbbbb66656655555575550000000000000000555755550000000000000000
+000000070a5555a0555555553333333357555555555aa5555555557555555555bbbbbbbb66656655555575550000000000000000555755550000000000000000
 00000000000000000000000033333b3355555555555555555557555555555555bbbbbbbb66556665555575555555555555555555555755550000000000000000
 000000000000000000000000333333b375555555555555555557555555555555bb4444bb66556665555557555555555555555555557555550000000000000000
-00000000000000000000000033b333b3575555555555555555575555555575553bb44bb355566655555555755555555555555555575555550000000000000000
-000000000000000000000000333b3333555555555555555555555555555575553334433355566554555555577555555555555557755555550000000000000000
-000000000000000000000000b33b3b33555777555577775555557555555575553334433356665554555555555775555555555775555555550000000000000000
-0000000000000000000000003b3333b3555555555555555555555755555575553334433366655544555555555557755555577555555555550000000000000000
-0000000000000000000000003b3333b3555555555555555555555555555555553344443366655544555555555555577777755555555555550000000000000000
-00000000000000000000000033333333555555555555555555555555555555553444444355555444555555555555555555555555555555550000000000000000
-00000000000000000000000000000000555555555555555555555555555555550000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000555555555555555577777777555555550000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000555555555555555555555555555555550000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000555555555577775555555555555555550000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000555555555555555555555555555555550000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000555555555555555555555555555555550000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000777777775555555555555555555555550000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000555555555555555555555555555555550000000000000000000000000000000000000000000000000000000000000000
+000e0000000000000000000033b333b3575555555555555555575555555575553bb44bb355566655555555755555555555555555575555550000000000000000
+00ee0000000ee00000000000333b3333555555555555555555555555555575553334433355566554555555577555555555555557755555550000000000000000
+00e4e004400e4e0000000000b33b3b33555777555577775555557555555575553334433356665554555555555775555555555775555555550000000000000000
+00e4456446544e00000000003b3333b3555555555555555555555755555575553334433366655544555555555557755555577555555555550000000000000000
+000e55444455e000000000003b3333b3555555555555555555555555555555553344443366655544555555555555577777755555555555550000000000000000
+00004544445400000000000033333333555555555555555555555555555555553444444355555444555555555555555555555555555555550000000000000000
+00004544445400000000000000000000555555555555555555555555555555550000000000000000000000000000000000000000000000000000000000000000
+00004544445400000000000000000000555555555555555577777777555555550000000000000000000000000000000000000000000000000000000000000000
+00047874478740000000000000000000555555555555555555555555555555550000000000000000000000000000000000000000000000000000000000000000
+00044444444440000000000000000000555555555577775555555555555555550000000000000000000000000000000000000000000000000000000000000000
+000474ffff4740000000000000000000555555555555555555555555555555550000000000000000000000000000000000000000000000000000000000000000
+00447e5ff5e744000000000000000000555555555555555555555555555555550000000000000000000000000000000000000000000000000000000000000000
+000447ffff7440000000000000000000777777775555555555555555555555550000000000000000000000000000000000000000000000000000000000000000
+00404444444404000000000000000000555555555555555555555555555555550000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
