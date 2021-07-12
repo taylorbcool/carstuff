@@ -246,10 +246,15 @@ function gState:controller()
   self.cam = camState:new(addcoords(self.player:move(dir), { x = - 127 /2.0, y = -127 /2.0}))
 end
 
+function gState:drawFuel()
+  print('fuel: '..self.player.fuel, self.player.x - 127/2, self.player.y - 127/2, 7)
+end
+
 function gState:draw()
   cls()
   self.cam:draw()
   self.player:draw()
+  self:drawFuel()
 end
 
 
@@ -390,10 +395,7 @@ function drawmap()
   map(0, 0, 0, 0, 32, 64)
 end
 
-function drawFuel()
-  print(actors[1].fuel, 25, 5, 7)
-  print("fuel:", 5, 5, 7)
-end
+
 
 -- Game loop
 
